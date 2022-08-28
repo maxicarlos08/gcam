@@ -1,6 +1,5 @@
-use crate::app::AppState;
 use eframe::{
-    egui::{Context, TopBottomPanel, Ui},
+    egui::{Context, TopBottomPanel},
     Frame,
 };
 

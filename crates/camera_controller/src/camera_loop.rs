@@ -5,10 +5,7 @@ use crate::{
     },
     settings::CameraSettings,
 };
-use gphoto2::{
-    widget::{WidgetType, WidgetValue},
-    Camera, Context, Result,
-};
+use gphoto2::{widget::WidgetValue, Camera, Context, Result};
 use std::sync::mpsc::{Receiver, Sender, TryRecvError};
 
 pub(crate) fn camera_loop(

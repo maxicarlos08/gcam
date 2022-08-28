@@ -1,9 +1,9 @@
 use crate::app::{AppState, UICamera};
 use camera_controller::messages::CameraStatus;
 use eframe::{
-    egui::{Context, Frame, Grid, ScrollArea, SidePanel, Ui, Window},
+    egui::{Context, Grid, ScrollArea, SidePanel, Ui, Window},
     emath::Align2,
-    epaint::{Color32, Vec2},
+    epaint::Vec2,
 };
 use gphoto2::{
     abilities::CameraDriverStatus,

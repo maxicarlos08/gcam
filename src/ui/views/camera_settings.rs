@@ -4,7 +4,10 @@ use crate::{
 };
 use camera_controller::settings::CameraSettings;
 use eframe::{
-    egui::{ComboBox, Context, Frame, Layout, ScrollArea, SidePanel, TopBottomPanel, Ui},
+    egui::{
+        ComboBox, Context, DragValue, Frame, Layout, ScrollArea, SidePanel, Slider, TopBottomPanel,
+        Ui,
+    },
     emath::Align,
     epaint::Color32,
 };
@@ -17,7 +20,17 @@ pub fn show(ctx: &Context, state: &mut AppState) {
 
     if let Some(camera) = &state.camera {
         SidePanel::right("camera_settings_panel").show(ctx, |ui| {
-            ui.heading("Camera settings");
+            ui.horizontal(|ui| {
+                ui.heading("Camera settings");
+
+                if ui
+                    .with_layout(Layout::right_to_left(Align::Center), |ui| ui.button("↻"))
+                    .inner
+                    .clicked()
+                {
+                    state.reload_settings();
+                }
+            });
             ui.separator();
 
             let mut set_setting = |setting: CameraSettings, section_id: u32| {
@@ -181,8 +194,27 @@ fn display_setting(ui: &mut Ui, setting: &mut CameraSettings, changed: &mut bool
                         *changed = true;
                     }
                 }
-                _ => {
-                    ui.label("TODO");
+                WidgetValue::Range(current) => {
+                    if let WidgetType::Range {
+                        min,
+                        max,
+                        increment,
+                    } = widget_type
+                    {
+                        if ui
+                            .add(Slider::new(current, *min..=*max).step_by(*increment as f64))
+                            .changed()
+                        {
+                            *changed = true;
+                        }
+                    } else {
+                        ui.label(format!("Invalid widget value: {:?}", value));
+                    }
+                }
+                WidgetValue::Date(seconds) => {
+                    if ui.add(DragValue::new(seconds)).changed() {
+                        *changed = true;
+                    }
                 }
             });
         }

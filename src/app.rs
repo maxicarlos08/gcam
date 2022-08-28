@@ -118,6 +118,10 @@ impl AppState {
         self.camera = None;
         self.camera_thread
             .send(MessageToThread::UseCamera(model, port))?;
+        self.reload_settings()
+    }
+
+    pub fn reload_settings(&self) -> Result<(), SendError<MessageToThread>> {
         self.camera_thread
             .send(MessageToThread::CameraCommand(CameraCommand::GetConfig))
     }
@@ -177,6 +181,7 @@ impl AppState {
                 MessageFromThread::CameraCommandResponse(response) => match response {
                     CameraCommandResponse::CameraConfig(config) => {
                         if let Some(camera) = &mut self.camera {
+                            camera.modified_settings.clear();
                             camera.settings = Some(config);
                         }
                     }
