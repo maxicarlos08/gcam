@@ -1,0 +1,12 @@
+[
+  // Sections
+  "actions",
+  "status",
+  "other",
+  // Settings that will either confuse the user
+  // or interfere with the application
+  "datetime",
+  "applicationmode",
+  "liveviewimagezoomratio",
+  "liveviewsize"
+]

@@ -1,4 +1,5 @@
 mod camera_loop;
+pub mod settings;
 
 use std::{
     sync::mpsc::{Receiver, SendError, Sender},
@@ -6,14 +7,12 @@ use std::{
 };
 
 pub mod messages {
-    use gphoto2::{
-        filesys::StorageInfo,
-        widget::{WidgetType, WidgetValue},
-    };
+    use crate::settings::CameraSettings;
+    use gphoto2::filesys::StorageInfo;
 
     #[derive(Debug, PartialEq)]
     pub enum CameraCommandResponse {
-        CameraSetting(Option<WidgetValue>, WidgetType),
+        CameraConfig(CameraSettings),
     }
 
     #[derive(Debug, PartialEq)]
@@ -31,7 +30,7 @@ pub mod messages {
         pub manufacturer: Option<String>,
         pub model: Option<String>,
         pub ac_power: Option<bool>,
-        pub battery_level: Option<f32>
+        pub battery_level: Option<f32>,
     }
 
     #[derive(Debug)]
@@ -49,6 +48,8 @@ pub mod messages {
     #[derive(Debug, PartialEq)]
     pub enum CameraCommand {
         SetLiveView(bool),
+        GetConfig,
+        SetConfig(CameraSettings),
     }
 
     #[derive(Debug, PartialEq)]

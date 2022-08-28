@@ -12,3 +12,6 @@ members = ["crates/*"]
 eframe = "0.19.0"
 camera_controller = { path = "crates/camera_controller" }
 gphoto2 = { git = "https://git.maxicarlos.de/maxicarlos08/gphoto2-rs" }
+serde = { version = "1.0.144", features = ["derive"] }
+serde_yaml = "0.9.10"
+directories = "4.0.1"

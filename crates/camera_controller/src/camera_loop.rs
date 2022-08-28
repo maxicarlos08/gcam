@@ -1,8 +1,14 @@
-use crate::messages::{
-    self, CameraCommand, CameraCommandResponse, CameraInfo, CameraStatus, MessageFromThread,
-    MessageToThread,
+use crate::{
+    messages::{
+        self, CameraCommand, CameraCommandResponse, CameraStatus, MessageFromThread,
+        MessageToThread,
+    },
+    settings::CameraSettings,
 };
-use gphoto2::{widget::WidgetValue, Camera, Context, Result};
+use gphoto2::{
+    widget::{WidgetType, WidgetValue},
+    Camera, Context, Result,
+};
 use std::sync::mpsc::{Receiver, Sender, TryRecvError};
 
 pub(crate) fn camera_loop(
@@ -151,6 +157,24 @@ fn exec_action<'a, 'b: 'a>(
             if let Some(camera) = camera {
                 match command {
                     CameraCommand::SetLiveView(lv) => *capturing_previews = lv,
+                    CameraCommand::GetConfig => {
+                        let config: CameraSettings = camera.config()?.try_into()?;
+
+                        send.send(MessageFromThread::CameraCommandResponse(
+                            CameraCommandResponse::CameraConfig(config),
+                        ))
+                        .unwrap();
+                    }
+                    CameraCommand::SetConfig(config) => {
+                        if let Some(value) = config.value {
+                            let mut camera_config = camera.config_key(&config.name)?;
+                            camera_config.set_value(value)?;
+                            camera.set_config(&camera_config)?;
+                        } else {
+                            // TODO: Set configuration for Window or section
+                            Err("Configuration has not value")?;
+                        }
+                    }
                 }
             } else {
                 Err("Cannot use camera command when there is no camera")?

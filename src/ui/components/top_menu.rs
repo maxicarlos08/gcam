@@ -67,6 +67,7 @@ pub fn show(ctx: &Context, frame: &mut eframe::Frame, state: &mut AppState) {
                 ui.add_enabled_ui(state.camera.is_some(), |ui| {
                     ui.menu_button("Panels", |ui| {
                         ui.toggle_value(&mut state.panes.camera_info, "Camera info");
+                        ui.toggle_value(&mut state.panes.camera_settings, "Camera settings");
                     })
                 })
             });
