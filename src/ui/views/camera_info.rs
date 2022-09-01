@@ -1,5 +1,5 @@
 use crate::app::{AppState, UICamera};
-use camera_controller::messages::CameraStatus;
+use camera_controller::settings::CameraSettings;
 use eframe::{
     egui::{Context, Grid, ScrollArea, SidePanel, Ui, Window},
     emath::Align2,
@@ -8,6 +8,7 @@ use eframe::{
 use gphoto2::{
     abilities::CameraDriverStatus,
     filesys::{AccessType, FilesystemType, StorageInfo, StorageType},
+    widget::WidgetValue,
 };
 
 pub fn show(ctx: &Context, state: &mut AppState) {
@@ -24,7 +25,33 @@ pub fn show(ctx: &Context, state: &mut AppState) {
                         driver_information(ui, &mut state.open_dialogs.camera_info_text, camera)
                     });
 
-                    ui.collapsing("Camera Status", |ui| camera_status(ui, &camera.info.status));
+                    if let (Some(id), Some(settings)) =
+                        (camera.settings_status_id, &camera.settings)
+                    {
+                        ui.collapsing("Camera Status", |ui| {
+                            camera_status(
+                                ui,
+                                settings
+                                    .children
+                                    .get(&id)
+                                    .unwrap()
+                                    .children
+                                    .iter()
+                                    .filter_map(|(_, child)| {
+                                        if state
+                                            .settings
+                                            .dev_settings
+                                            .exclude_settings
+                                            .contains(&child.name)
+                                        {
+                                            None
+                                        } else {
+                                            Some(child)
+                                        }
+                                    }),
+                            )
+                        });
+                    }
 
                     ui.collapsing("Camera Storages", |ui| {
                         for (i, storage) in camera.info.storages.iter().enumerate() {
@@ -37,38 +64,28 @@ pub fn show(ctx: &Context, state: &mut AppState) {
 }
 
 #[inline]
-fn camera_status(ui: &mut Ui, status: &CameraStatus) {
+fn camera_status<'a>(ui: &mut Ui, children: impl Iterator<Item = &'a CameraSettings>) {
     ScrollArea::horizontal().show(ui, |ui| {
         Grid::new("camera_status_grid")
             .striped(true)
             .show(ui, |ui| {
-                if let Some(manufacturer) = &status.manufacturer {
-                    ui.label("Manufacturer");
-                    ui.label(manufacturer);
-                    ui.end_row();
-                }
+                for child in children {
+                    ui.label(child.label.as_ref().unwrap_or(&child.name));
 
-                if let Some(serial_number) = &status.serial_number {
-                    ui.label("Serial number");
-                    ui.label(serial_number);
-                    ui.end_row();
-                }
+                    ui.label(if let Some(value) = &child.value {
+                        match value {
+                            WidgetValue::Date(date) => date.to_string(),
+                            WidgetValue::Menu(choice) => choice.to_owned(),
+                            WidgetValue::Range(range) => range.to_string(),
+                            WidgetValue::Text(text) => text.to_owned(),
+                            WidgetValue::Toggle(toggled) => {
+                                if *toggled { "Yes" } else { "No" }.to_owned()
+                            }
+                        }
+                    } else {
+                        "".to_owned()
+                    });
 
-                if let Some(model) = &status.model {
-                    ui.label("Model");
-                    ui.label(model);
-                    ui.end_row();
-                }
-
-                if let Some(ac_powered) = status.ac_power {
-                    ui.label("AC powered");
-                    ui.label(if ac_powered { "Yes" } else { "No" });
-                    ui.end_row();
-                }
-
-                if let Some(battery_level) = status.battery_level {
-                    ui.label("Battery level");
-                    ui.label(format!("{}%", battery_level * 100f32));
                     ui.end_row();
                 }
             })

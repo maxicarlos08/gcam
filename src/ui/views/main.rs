@@ -10,6 +10,10 @@ pub fn show(ctx: &Context, state: &mut AppState) {
         if state.panes.camera_settings {
             super::camera_settings::show(ctx, state);
         }
+
+        if state.panes.camera_media {
+            super::camera_media::show(ctx, state);
+        }
     } else {
         CentralPanel::default().show(ctx, |ui| {
             ui.with_layout(Layout::centered_and_justified(Direction::TopDown), |ui| {

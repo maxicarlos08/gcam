@@ -8,5 +8,9 @@
   "datetime",
   "applicationmode",
   "liveviewimagezoomratio",
-  "liveviewsize"
+  "liveviewsize",
+  // EXcluded status information
+  "movieprohibit",
+  "liveviewprohibit",
+  "vendorextension"
 ]

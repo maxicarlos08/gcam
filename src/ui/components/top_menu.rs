@@ -1,4 +1,4 @@
-use crate::app::AppState;
+use crate::{app::AppState, error::CatchAppResult};
 use eframe::{
     egui::{self, global_dark_light_mode_switch, menu::bar, Context, RichText, TopBottomPanel},
     epaint::Color32,
@@ -8,9 +8,13 @@ pub fn show(ctx: &Context, frame: &mut eframe::Frame, state: &mut AppState) {
     TopBottomPanel::top("app_menu").show(ctx, |ui| {
         bar(ui, |ui| {
             ui.menu_button("File", |ui| {
-                let quit_button = ui.button("Quit");
+                if ui.button("Settings").clicked() {
+                    state.open_dialogs.settings = true;
+                }
 
-                if quit_button.clicked() {
+                ui.separator();
+
+                if ui.button("Quit").clicked() {
                     frame.close()
                 }
             });
@@ -40,7 +44,7 @@ pub fn show(ctx: &Context, frame: &mut eframe::Frame, state: &mut AppState) {
                         }
 
                         if let Some(camera) = selected_camera {
-                            state.use_camera(camera.0, camera.1);
+                            state.use_camera(camera.0, camera.1).catch(state);
                         }
                     });
                 }
@@ -54,12 +58,12 @@ pub fn show(ctx: &Context, frame: &mut eframe::Frame, state: &mut AppState) {
                     );
 
                     if close_camera.clicked() {
-                        state.close_camera();
+                        state.close_camera().catch(state);
                     }
                 }
 
                 if refresh_camera.clicked() {
-                    state.update_cameras();
+                    state.update_cameras().catch(state);
                 }
             });
 
@@ -68,6 +72,7 @@ pub fn show(ctx: &Context, frame: &mut eframe::Frame, state: &mut AppState) {
                     ui.menu_button("Panels", |ui| {
                         ui.toggle_value(&mut state.panes.camera_info, "Camera info");
                         ui.toggle_value(&mut state.panes.camera_settings, "Camera settings");
+                        ui.toggle_value(&mut state.panes.camera_media, "Camera media");
                     })
                 })
             });

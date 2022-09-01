@@ -1,11 +1,8 @@
 use crate::{
-    messages::{
-        self, CameraCommand, CameraCommandResponse, CameraStatus, MessageFromThread,
-        MessageToThread,
-    },
+    messages::{self, CameraCommand, CameraCommandResponse, MessageFromThread, MessageToThread},
     settings::CameraSettings,
 };
-use gphoto2::{widget::WidgetValue, Camera, Context, Result};
+use gphoto2::{Camera, Context, Result};
 use std::sync::mpsc::{Receiver, Sender, TryRecvError};
 
 pub(crate) fn camera_loop(
@@ -68,19 +65,10 @@ fn exec_action<'a, 'b: 'a>(
             send.send(MessageFromThread::CameraList(cameras)).unwrap();
         }
         MessageToThread::UseCamera(model, port) => {
-            macro_rules! get_status_config {
-                ($name:expr, $root:expr) => {
-                    $root
-                        .get_child_by_name($name)
-                        .ok()
-                        .map(|config| config.value().ok())
-                        .flatten()
-                        .map(|value| value.0)
-                        .flatten()
-                };
-            }
-
-            let new_camera = context.get_camera(&model, &port)?;
+            let new_camera = context.get_camera(&model, &port).map(|err| {
+                send.send(MessageFromThread::CameraOpen(None)).unwrap();
+                err
+            })?;
             let camera_info = messages::CameraInfo {
                 model,
                 port,
@@ -89,55 +77,6 @@ fn exec_action<'a, 'b: 'a>(
                 summary: new_camera.summary().map(Into::into).ok(),
                 abilities: new_camera.abilities()?,
                 storages: new_camera.storages()?,
-                status: {
-                    // TODO: Move this code somewhere else and make it compatible for more cameras
-                    let status_config = new_camera.config()?.get_child_by_name("status")?;
-
-                    CameraStatus {
-                        serial_number: if let Some(WidgetValue::Text(serial)) =
-                            get_status_config!("serialnumber", status_config)
-                        {
-                            Some(serial)
-                        } else {
-                            None
-                        },
-                        manufacturer: if let Some(WidgetValue::Text(manufacturer)) =
-                            get_status_config!("manufacturer", status_config)
-                        {
-                            Some(manufacturer)
-                        } else {
-                            None
-                        },
-                        model: if let Some(WidgetValue::Text(model)) =
-                            get_status_config!("cameramodel", status_config)
-                        {
-                            Some(model)
-                        } else {
-                            None
-                        },
-                        ac_power: if let Some(WidgetValue::Menu(ac_power)) =
-                            get_status_config!("acpower", status_config)
-                        {
-                            Some(ac_power == "On")
-                        } else {
-                            None
-                        },
-                        battery_level: if let Some(WidgetValue::Text(battery_level)) =
-                            get_status_config!("batterylevel", status_config)
-                        {
-                            let battery_value: f32 = battery_level
-                                .split("%")
-                                .nth(0)
-                                .ok_or("Invalid formatted battery level from camera")?
-                                .parse()
-                                .map_err(|_| "Battery level is not a number")?;
-
-                            Some(battery_value / 100f32)
-                        } else {
-                            None
-                        },
-                    }
-                },
             };
 
             *camera = Some(new_camera);

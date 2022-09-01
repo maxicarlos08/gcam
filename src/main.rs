@@ -1,10 +1,17 @@
-use eframe::{run_native, NativeOptions};
+use eframe::{epaint::Vec2, run_native, NativeOptions};
+use gcam::error::AppResult;
 
-fn main() {
-    let window_config = NativeOptions::default();
+fn main() -> AppResult<()> {
+    let window_config = NativeOptions {
+        min_window_size: Some(Vec2::new(600f32, 400f32)),
+        ..Default::default()
+    };
+
     run_native(
         "camera_gui",
         window_config,
-        Box::new(|_| Box::new(gcam::app::AppState::default())),
+        Box::new(move |_| Box::new(gcam::app::AppState::new().unwrap())),
     );
+
+    Ok(())
 }

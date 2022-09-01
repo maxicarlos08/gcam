@@ -1,5 +1,6 @@
 use crate::{
     app::{AppState, ModifiedSettingsMap},
+    error::CatchAppResult,
     settings::Settings,
 };
 use camera_controller::settings::CameraSettings;
@@ -28,7 +29,7 @@ pub fn show(ctx: &Context, state: &mut AppState) {
                     .inner
                     .clicked()
                 {
-                    state.reload_settings();
+                    state.reload_settings().unwrap();
                 }
             });
             ui.separator();
@@ -54,7 +55,7 @@ pub fn show(ctx: &Context, state: &mut AppState) {
     }
 
     if apply_settings {
-        state.apply_settings();
+        state.apply_settings().catch(state);
     } else if let Some(camera) = &mut state.camera {
         if let Some((setting, section_id)) = changed_setting {
             camera.modify_setting(section_id, setting);

@@ -25,17 +25,7 @@ pub mod messages {
     }
 
     #[derive(Debug)]
-    pub struct CameraStatus {
-        pub serial_number: Option<String>,
-        pub manufacturer: Option<String>,
-        pub model: Option<String>,
-        pub ac_power: Option<bool>,
-        pub battery_level: Option<f32>,
-    }
-
-    #[derive(Debug)]
     pub struct CameraInfo {
-        pub status: CameraStatus,
         pub model: String,
         pub port: String,
         pub manual: Option<String>,
@@ -63,7 +53,6 @@ pub mod messages {
 
     impl PartialEq for CameraInfo {
         fn eq(&self, _other: &Self) -> bool {
-            // TODO
             true
         }
     }
@@ -82,7 +71,7 @@ impl CameraThread {
 
         let handle = std::thread::spawn(move || {
             camera_loop::camera_loop(to_thread_recv, from_thread_send)
-                .expect("Failed to start camera loop"); // TODO handle this error somehow
+                .expect("Failed to start camera loop"); // TODO handle this error
         });
 
         Self {
