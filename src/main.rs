@@ -1,5 +1,5 @@
 use eframe::{epaint::Vec2, run_native, NativeOptions};
-use gcam::error::AppResult;
+use gcam_lib::error::AppResult;
 
 fn main() -> AppResult<()> {
     let window_config = NativeOptions {

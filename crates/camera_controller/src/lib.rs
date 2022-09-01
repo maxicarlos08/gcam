@@ -1,62 +1,9 @@
 mod camera_loop;
+pub mod messages;
 pub mod settings;
 
-use std::{
-    sync::mpsc::{Receiver, SendError, Sender},
-    thread::JoinHandle,
-};
-
-pub mod messages {
-    use crate::settings::CameraSettings;
-    use gphoto2::filesys::StorageInfo;
-
-    #[derive(Debug, PartialEq)]
-    pub enum CameraCommandResponse {
-        CameraConfig(CameraSettings),
-    }
-
-    #[derive(Debug, PartialEq)]
-    pub enum MessageFromThread {
-        PreviewCapture(Box<[u8]>),
-        CameraCommandResponse(CameraCommandResponse),
-        CameraList(Vec<(String, String)>),
-        CameraOpen(Option<CameraInfo>),
-        Error(gphoto2::Error),
-    }
-
-    #[derive(Debug)]
-    pub struct CameraInfo {
-        pub model: String,
-        pub port: String,
-        pub manual: Option<String>,
-        pub summary: Option<String>,
-        pub about: Option<String>,
-        pub abilities: gphoto2::abilities::Abilities,
-        pub storages: Vec<StorageInfo>,
-    }
-
-    #[derive(Debug, PartialEq)]
-    pub enum CameraCommand {
-        SetLiveView(bool),
-        GetConfig,
-        SetConfig(CameraSettings),
-    }
-
-    #[derive(Debug, PartialEq)]
-    pub enum MessageToThread {
-        ListCameras,
-        CameraCommand(CameraCommand),
-        UseCamera(String, String),
-        CloseCamera,
-        Break,
-    }
-
-    impl PartialEq for CameraInfo {
-        fn eq(&self, _other: &Self) -> bool {
-            true
-        }
-    }
-}
+use crossbeam_channel::{unbounded, Receiver, SendError, Sender};
+use std::thread::JoinHandle;
 
 pub struct CameraThread {
     handle: Option<JoinHandle<()>>,
@@ -66,8 +13,8 @@ pub struct CameraThread {
 
 impl CameraThread {
     pub fn start() -> Self {
-        let (to_thread_send, to_thread_recv) = std::sync::mpsc::channel();
-        let (from_thread_send, from_thread_recv) = std::sync::mpsc::channel();
+        let (to_thread_send, to_thread_recv) = unbounded();
+        let (from_thread_send, from_thread_recv) = unbounded();
 
         let handle = std::thread::spawn(move || {
             camera_loop::camera_loop(to_thread_recv, from_thread_send)

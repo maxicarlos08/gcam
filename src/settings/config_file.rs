@@ -1,8 +1,7 @@
 use directories::ProjectDirs;
+use gcam_lib::error::AppResult;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashSet, fs};
-
-use crate::error::AppResult;
 
 const APP_ORG: &str = "maxicarlos08";
 const APP_NAME: &str = "GCam";

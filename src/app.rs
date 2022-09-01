@@ -1,5 +1,5 @@
 use crate::{
-    error::{AppError, AppResult, UiError},
+    error::{ToUIError, UiError},
     settings::Settings,
     ui::{components, views},
 };
@@ -10,7 +10,11 @@ use camera_controller::{
     settings::CameraSettings,
     CameraThread,
 };
-use eframe::egui::Context;
+use eframe::{
+    egui::Context,
+    epaint::{TextureHandle, TextureId},
+};
+use gcam_lib::error::AppResult;
 use std::{collections::HashMap, time::Duration};
 
 const REPAINT_INTERVAL: Duration = Duration::from_millis(100);
@@ -29,6 +33,7 @@ pub struct UICamera {
     pub settings: Option<CameraSettings>,
     pub settings_status_id: Option<u32>,
     pub modified_settings: ModifiedSettingsMap,
+    pub live_view_enabled: bool,
 }
 
 #[derive(Default)]
@@ -44,6 +49,7 @@ pub struct AppState {
     pub panes: VisiblePanes,
     pub open_dialogs: Dialogs,
     pub settings: Settings,
+    pub last_preview_capture: Option<TextureHandle>,
     errors: Vec<UiError>,
     camera_thread: CameraThread,
     first_load: bool,
@@ -90,6 +96,7 @@ impl AppState {
             camera_list: Default::default(),
             open_dialogs: Default::default(),
             panes: Default::default(),
+            last_preview_capture: None,
             errors: vec![],
             settings,
         };
@@ -151,13 +158,28 @@ impl AppState {
         Ok(())
     }
 
+    pub fn set_live_view(&mut self, live_view: bool) -> AppResult<()> {
+        if let Some(UICamera {
+            live_view_enabled, ..
+        }) = &mut self.camera
+        {
+            *live_view_enabled = live_view;
+            self.camera_thread
+                .send(MessageToThread::CameraCommand(CameraCommand::SetLiveView(
+                    live_view,
+                )))?;
+        }
+
+        Ok(())
+    }
+
     pub fn show_error(&mut self, error: UiError) {
         self.errors.push(error);
     }
 }
 
 impl AppState {
-    fn process_events_from_camera_thread(&mut self) -> AppResult<()> {
+    fn process_events_from_camera_thread(&mut self, ctx: &Context) -> AppResult<()> {
         // Use the first available camera if this is the first run
         let mut use_first_camera = false;
         let mut errors: Option<Vec<UiError>> = None;
@@ -180,6 +202,7 @@ impl AppState {
                             settings: None,
                             settings_status_id: None,
                             modified_settings: Default::default(),
+                            live_view_enabled: false,
                         });
                     } else {
                         self.current_camera = None;
@@ -202,17 +225,26 @@ impl AppState {
                             camera.settings = Some(config);
                         }
                     }
+                    CameraCommandResponse::LiveView(capturing_previews) => {
+                        if let Some(camera) = &mut self.camera {
+                            camera.live_view_enabled = capturing_previews;
+                        }
+                    }
                 },
                 MessageFromThread::Error(err) => {
                     eprintln!("Error from camera thread: {:?}", err);
-                    let ui_error = AppError::GPhotoError(err).ui_error();
+                    let ui_error = err.to_ui_error();
                     if let Some(errors) = &mut errors {
                         errors.push(ui_error)
                     } else {
                         errors = Some(vec![ui_error])
                     }
                 }
-                MessageFromThread::PreviewCapture(_) => todo!(),
+                MessageFromThread::PreviewCapture(capture) => {
+                    let texture_handle =
+                        ctx.load_texture("preview_image", capture.0, Default::default());
+                    self.last_preview_capture = Some(texture_handle);
+                }
             }
         }
 
@@ -235,8 +267,8 @@ impl AppState {
 
 impl eframe::App for AppState {
     fn update(&mut self, ctx: &Context, frame: &mut eframe::Frame) {
-        if let Err(err) = self.process_events_from_camera_thread() {
-            self.errors.push(err.ui_error())
+        if let Err(err) = self.process_events_from_camera_thread(ctx) {
+            self.errors.push(err.to_ui_error())
         }
 
         components::top_menu::show(ctx, frame, self);

@@ -3,6 +3,10 @@ use eframe::egui::{CentralPanel, Context, Direction, Layout};
 
 pub fn show(ctx: &Context, state: &mut AppState) {
     if state.camera.is_some() {
+        if state.panes.camera_media {
+            super::camera_media::show(ctx, state);
+        }
+
         if state.panes.camera_info {
             super::camera_info::show(ctx, state);
         }
@@ -11,9 +15,7 @@ pub fn show(ctx: &Context, state: &mut AppState) {
             super::camera_settings::show(ctx, state);
         }
 
-        if state.panes.camera_media {
-            super::camera_media::show(ctx, state);
-        }
+        super::center_view::show(ctx, state);
     } else {
         CentralPanel::default().show(ctx, |ui| {
             ui.with_layout(Layout::centered_and_justified(Direction::TopDown), |ui| {

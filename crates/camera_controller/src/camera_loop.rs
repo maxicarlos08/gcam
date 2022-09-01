@@ -1,23 +1,36 @@
+use std::time::Instant;
+
 use crate::{
-    messages::{self, CameraCommand, CameraCommandResponse, MessageFromThread, MessageToThread},
+    messages::{
+        self, CameraCommand, CameraCommandResponse, MessageFromThread, MessageToThread,
+        PreviewImage,
+    },
     settings::CameraSettings,
 };
+use crossbeam_channel::{Receiver, Sender, TryRecvError};
+use gcam_lib::{error::AppResult, utils};
 use gphoto2::{Camera, Context, Result};
-use std::sync::mpsc::{Receiver, Sender, TryRecvError};
 
 pub(crate) fn camera_loop(
     recv_message: Receiver<MessageToThread>,
     send_message: Sender<MessageFromThread>,
 ) -> Result<()> {
     let context = Context::new()?;
-    let mut camera = None;
+    let mut camera: Option<Camera> = None;
     let mut capturing_previews = false;
 
     loop {
         let action = if capturing_previews {
             match recv_message.try_recv() {
                 Err(TryRecvError::Empty) => {
-                    // TODO: Capture preview and send to parent
+                    if let Err(err) =
+                        capture_preview(&camera, &mut capturing_previews, &send_message)
+                    {
+                        send_message.send(MessageFromThread::Error(err)).unwrap();
+                    };
+
+                    std::thread::sleep(std::time::Duration::from_millis(20));
+
                     continue;
                 }
                 Err(TryRecvError::Disconnected) => Err("Sender seems to be dead")?,
@@ -51,7 +64,7 @@ fn exec_action<'a, 'b: 'a>(
     context: &'b Context<'b>,
     camera: &'a mut Option<Camera<'b>>,
     capturing_previews: &mut bool,
-) -> Result<bool> {
+) -> AppResult<bool> {
     match action {
         MessageToThread::Break => return Ok(true),
         MessageToThread::ListCameras => {
@@ -92,7 +105,11 @@ fn exec_action<'a, 'b: 'a>(
         MessageToThread::CameraCommand(command) => {
             if let Some(camera) = camera {
                 match command {
-                    CameraCommand::SetLiveView(lv) => *capturing_previews = lv,
+                    CameraCommand::SetLiveView(lv) => {
+                        if camera.abilities()?.camera_operations().capture_preview() {
+                            *capturing_previews = lv
+                        }
+                    }
                     CameraCommand::GetConfig => {
                         let config: CameraSettings = camera.config()?.try_into()?;
 
@@ -119,4 +136,33 @@ fn exec_action<'a, 'b: 'a>(
     }
 
     Ok(false)
+}
+
+fn capture_preview(
+    camera: &Option<Camera>,
+    capturing_previews: &mut bool,
+    send: &Sender<MessageFromThread>,
+) -> AppResult<()> {
+    if let Some(camera) = &camera {
+        match camera.capture_preview() {
+            Ok(preview) => {
+                let data = preview.get_data()?;
+                send.send(MessageFromThread::PreviewCapture(PreviewImage(
+                    utils::image::decode_image(&data)?,
+                )))
+                .unwrap();
+            }
+            Err(error) => {
+                send.send(MessageFromThread::Error(error.into())).unwrap();
+            }
+        }
+    } else {
+        *capturing_previews = false;
+        send.send(MessageFromThread::CameraCommandResponse(
+            CameraCommandResponse::LiveView(false),
+        ))
+        .unwrap();
+    }
+
+    Ok(())
 }

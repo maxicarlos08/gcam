@@ -1,3 +1,3 @@
-mod settings;
+mod config_file;
 
-pub use settings::Settings;
+pub use config_file::Settings;
