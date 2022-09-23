@@ -21,11 +21,7 @@ impl CameraThread {
                 .expect("Failed to start camera loop"); // TODO handle this error
         });
 
-        Self {
-            handle: Some(handle),
-            receiver: from_thread_recv,
-            sender: to_thread_send,
-        }
+        Self { handle: Some(handle), receiver: from_thread_recv, sender: to_thread_send }
     }
 
     pub fn stop(&mut self) -> Result<(), Box<dyn std::error::Error>> {

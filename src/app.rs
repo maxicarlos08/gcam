@@ -1,7 +1,7 @@
 use crate::{
     error::{ToUIError, UiError},
     settings::Settings,
-    ui::{components, views},
+    ui::{components, views, windows},
 };
 use camera_controller::{
     messages::{
@@ -10,10 +10,7 @@ use camera_controller::{
     settings::CameraSettings,
     CameraThread,
 };
-use eframe::{
-    egui::Context,
-    epaint::{TextureHandle, TextureId},
-};
+use eframe::{egui::Context, epaint::TextureHandle};
 use gcam_lib::error::AppResult;
 use std::{collections::HashMap, time::Duration};
 
@@ -31,7 +28,6 @@ pub struct VisiblePanes {
 pub struct UICamera {
     pub info: CameraInfo,
     pub settings: Option<CameraSettings>,
-    pub settings_status_id: Option<u32>,
     pub modified_settings: ModifiedSettingsMap,
     pub live_view_enabled: bool,
 }
@@ -57,18 +53,13 @@ pub struct AppState {
 
 impl Default for VisiblePanes {
     fn default() -> Self {
-        Self {
-            camera_info: true,
-            camera_settings: true,
-            camera_media: true,
-        }
+        Self { camera_info: true, camera_settings: true, camera_media: true }
     }
 }
 
 impl UICamera {
     pub fn modify_setting(&mut self, section_id: u32, setting: CameraSettings) {
-        self.modified_settings
-            .insert(setting.id, (section_id, setting));
+        self.modified_settings.insert(setting.id, (section_id, setting));
     }
 
     pub fn discard_settings(&mut self) {
@@ -122,24 +113,18 @@ impl AppState {
         }
 
         self.camera = None;
-        self.camera_thread
-            .send(MessageToThread::UseCamera(model, port))?;
+        self.camera_thread.send(MessageToThread::UseCamera(model, port))?;
         self.reload_settings()?;
         Ok(())
     }
 
     pub fn reload_settings(&self) -> AppResult<()> {
-        self.camera_thread
-            .send(MessageToThread::CameraCommand(CameraCommand::GetConfig))?;
+        self.camera_thread.send(MessageToThread::CameraCommand(CameraCommand::GetConfig))?;
         Ok(())
     }
 
     pub fn apply_settings(&mut self) -> AppResult<()> {
-        if let Some(UICamera {
-            settings: Some(settings),
-            modified_settings,
-            ..
-        }) = &mut self.camera
+        if let Some(UICamera { settings: Some(settings), modified_settings, .. }) = &mut self.camera
         {
             for (setting_id, (section_id, modified)) in modified_settings.drain() {
                 self.camera_thread.send(MessageToThread::CameraCommand(
@@ -159,15 +144,10 @@ impl AppState {
     }
 
     pub fn set_live_view(&mut self, live_view: bool) -> AppResult<()> {
-        if let Some(UICamera {
-            live_view_enabled, ..
-        }) = &mut self.camera
-        {
+        if let Some(UICamera { live_view_enabled, .. }) = &mut self.camera {
             *live_view_enabled = live_view;
             self.camera_thread
-                .send(MessageToThread::CameraCommand(CameraCommand::SetLiveView(
-                    live_view,
-                )))?;
+                .send(MessageToThread::CameraCommand(CameraCommand::SetLiveView(live_view)))?;
         }
 
         Ok(())
@@ -200,7 +180,6 @@ impl AppState {
                         self.camera = Some(UICamera {
                             info: camera,
                             settings: None,
-                            settings_status_id: None,
                             modified_settings: Default::default(),
                             live_view_enabled: false,
                         });
@@ -213,15 +192,6 @@ impl AppState {
                     CameraCommandResponse::CameraConfig(config) => {
                         if let Some(camera) = &mut self.camera {
                             camera.modified_settings.clear();
-
-                            if let Some((id, _)) = config
-                                .children
-                                .iter()
-                                .find(|(_, child)| child.name == "status")
-                            {
-                                camera.settings_status_id = Some(*id);
-                            }
-
                             camera.settings = Some(config);
                         }
                     }
@@ -232,7 +202,8 @@ impl AppState {
                     }
                 },
                 MessageFromThread::Error(err) => {
-                    eprintln!("Error from camera thread: {:?}", err);
+                    log::error!("Got error from camera thread: {:?}", err);
+
                     let ui_error = err.to_ui_error();
                     if let Some(errors) = &mut errors {
                         errors.push(ui_error)
@@ -249,10 +220,7 @@ impl AppState {
         }
 
         if use_first_camera {
-            self.use_camera(
-                self.camera_list[0].0.to_owned(),
-                self.camera_list[0].1.to_owned(),
-            )?;
+            self.use_camera(self.camera_list[0].0.to_owned(), self.camera_list[0].1.to_owned())?;
         }
 
         if let Some(errors) = errors {
@@ -276,14 +244,14 @@ impl eframe::App for AppState {
         views::main::show(ctx, self);
 
         if self.open_dialogs.settings {
-            views::settings::show(ctx, self);
+            windows::settings::show(ctx, self);
         }
 
         {
             let mut pop_error = false;
 
             for error in &self.errors {
-                if components::error::show(ctx, &error) {
+                if windows::error::show(ctx, &error) {
                     pop_error = true;
                 }
             }

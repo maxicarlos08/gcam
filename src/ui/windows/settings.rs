@@ -12,7 +12,7 @@ pub fn show(ctx: &Context, state: &mut AppState) {
         .resizable(false)
         .open(&mut state.open_dialogs.settings)
         .show(ctx, |ui| {
-            ui.with_layout(Layout::left_to_right(Align::Max), |ui| {
+            ui.with_layout(Layout::left_to_right(Align::Max).with_cross_justify(true), |ui| {
                 ui.group(|ui| {
                     ui.label("TODO");
                 });

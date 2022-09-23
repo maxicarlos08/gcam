@@ -55,7 +55,7 @@ pub fn show(ctx: &Context, state: &mut AppState) {
     }
 
     if apply_settings {
-        state.apply_settings().catch(state);
+        let _ = state.apply_settings().catch(state);
     } else if let Some(camera) = &mut state.camera {
         if let Some((setting, section_id)) = changed_setting {
             camera.modify_setting(section_id, setting);
@@ -91,11 +91,7 @@ fn display_settings_root<S: FnMut(CameraSettings, u32)>(
 
         ScrollArea::vertical().show(ui, |ui| {
             for section in camera_settings.children.values() {
-                if app_settings
-                    .dev_settings
-                    .exclude_settings
-                    .contains(&section.name)
-                {
+                if app_settings.dev_settings.exclude_settings.contains(&section.name) {
                     continue;
                 }
 
@@ -125,11 +121,7 @@ fn display_settings_section<S: FnMut(CameraSettings, u32)>(
 ) {
     if section.is_section() {
         for setting in section.children.values() {
-            if app_settings
-                .dev_settings
-                .exclude_settings
-                .contains(&setting.name)
-            {
+            if app_settings.dev_settings.exclude_settings.contains(&setting.name) {
                 continue;
             }
 
@@ -174,9 +166,9 @@ fn display_setting(ui: &mut Ui, setting: &mut CameraSettings, changed: &mut bool
                 }
                 WidgetValue::Menu(selected) => {
                     if let WidgetType::Menu { choices, .. } = widget_type {
-                        ComboBox::from_id_source(setting_label)
-                            .selected_text(&*selected)
-                            .show_ui(ui, |ui| {
+                        ComboBox::from_id_source(setting_label).selected_text(&*selected).show_ui(
+                            ui,
+                            |ui| {
                                 for choice in choices {
                                     if ui
                                         .selectable_value(selected, choice.to_owned(), choice)
@@ -185,23 +177,37 @@ fn display_setting(ui: &mut Ui, setting: &mut CameraSettings, changed: &mut bool
                                         *changed = true;
                                     }
                                 }
-                            });
+                            },
+                        );
                     } else {
                         ui.label(format!("Invalid widget value: {:?}", value));
                     }
                 }
                 WidgetValue::Toggle(toggled) => {
-                    if ui.checkbox(toggled, "").changed() {
-                        *changed = true;
-                    }
+                    // TODO: I bet this can be done better
+                    ComboBox::from_id_source(setting_label)
+                        .selected_text(match toggled {
+                            Some(true) => "Yes",
+                            Some(false) => "No",
+                            None => "Unknown",
+                        })
+                        .show_ui(ui, |ui| {
+                            for option in [true, false] {
+                                if ui
+                                    .selectable_value(
+                                        toggled,
+                                        Some(option),
+                                        if option { "Yes" } else { "No" },
+                                    )
+                                    .changed()
+                                {
+                                    *changed = true
+                                }
+                            }
+                        });
                 }
                 WidgetValue::Range(current) => {
-                    if let WidgetType::Range {
-                        min,
-                        max,
-                        increment,
-                    } = widget_type
-                    {
+                    if let WidgetType::Range { min, max, increment } = widget_type {
                         if ui
                             .add(Slider::new(current, *min..=*max).step_by(*increment as f64))
                             .changed()

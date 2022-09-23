@@ -29,9 +29,6 @@ impl<T> CatchAppResult<T> for AppResult<T> {
 
 impl ToUIError for AppError {
     fn to_ui_error(&self) -> UiError {
-        UiError {
-            title: self.title(),
-            message: self.to_string(),
-        }
+        UiError { title: self.title(), message: self.to_string() }
     }
 }

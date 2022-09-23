@@ -1,5 +1,3 @@
-use std::time::Instant;
-
 use crate::{
     messages::{
         self, CameraCommand, CameraCommandResponse, MessageFromThread, MessageToThread,
@@ -9,7 +7,7 @@ use crate::{
 };
 use crossbeam_channel::{Receiver, Sender, TryRecvError};
 use gcam_lib::{error::AppResult, utils};
-use gphoto2::{Camera, Context, Result};
+use gphoto2::{widget::WidgetValue, Camera, Context, Result};
 
 pub(crate) fn camera_loop(
     recv_message: Receiver<MessageToThread>,
@@ -40,13 +38,7 @@ pub(crate) fn camera_loop(
             recv_message.recv().map_err(|_| "Sender seems to be dead")?
         };
 
-        match exec_action(
-            action,
-            &send_message,
-            &context,
-            &mut camera,
-            &mut capturing_previews,
-        ) {
+        match exec_action(action, &send_message, &context, &mut camera, &mut capturing_previews) {
             Ok(true) => break,
             Ok(_) => {}
             Err(error) => {
@@ -58,11 +50,11 @@ pub(crate) fn camera_loop(
     Ok(())
 }
 
-fn exec_action<'a, 'b: 'a>(
+fn exec_action(
     action: MessageToThread,
     send: &Sender<MessageFromThread>,
-    context: &'b Context<'b>,
-    camera: &'a mut Option<Camera<'b>>,
+    context: &Context,
+    camera: &mut Option<Camera>,
     capturing_previews: &mut bool,
 ) -> AppResult<bool> {
     match action {
@@ -94,8 +86,7 @@ fn exec_action<'a, 'b: 'a>(
 
             *camera = Some(new_camera);
 
-            send.send(MessageFromThread::CameraOpen(Some(camera_info)))
-                .unwrap();
+            send.send(MessageFromThread::CameraOpen(Some(camera_info))).unwrap();
         }
         MessageToThread::CloseCamera => {
             *camera = None;
@@ -107,6 +98,10 @@ fn exec_action<'a, 'b: 'a>(
                 match command {
                     CameraCommand::SetLiveView(lv) => {
                         if camera.abilities()?.camera_operations().capture_preview() {
+                            let mut viewfinder_config = camera.config_key("viewfinder")?;
+                            viewfinder_config.set_value(WidgetValue::Toggle(Some(lv)))?;
+                            camera.set_config(&viewfinder_config)?;
+
                             *capturing_previews = lv
                         }
                     }
@@ -158,10 +153,8 @@ fn capture_preview(
         }
     } else {
         *capturing_previews = false;
-        send.send(MessageFromThread::CameraCommandResponse(
-            CameraCommandResponse::LiveView(false),
-        ))
-        .unwrap();
+        send.send(MessageFromThread::CameraCommandResponse(CameraCommandResponse::LiveView(false)))
+            .unwrap();
     }
 
     Ok(())
