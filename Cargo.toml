@@ -10,9 +10,8 @@ members = ["crates/*"]
 
 [dependencies]
 gcam_lib = { path = "crates/gcam_lib" }
-camera_controller = { path = "crates/camera_controller" }
 eframe = "0.19.0"
-gphoto2 = "1.5"
+gphoto2 = { git = "https://git.maxicarlos.de/maxicarlos08/gphoto2-rs.git", version = "2" }
 serde = { version = "1.0.144", features = ["derive"] }
 serde_yaml = "0.9.10"
 directories = "4.0.1"
@@ -20,3 +19,4 @@ crossbeam-channel = "0.5.6"
 image = "0.24.3"
 log = "0.4.17"
 env_logger = "0.9.0"
+epaint = "0.19.0"

@@ -1,4 +1,4 @@
-use crate::app::AppState;
+use crate::ui::state::AppState;
 use eframe::{
     egui::{Context, Layout, Window},
     emath::{Align, Align2},

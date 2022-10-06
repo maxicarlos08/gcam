@@ -10,7 +10,9 @@ fn main() -> AppResult<()> {
     run_native(
         "camera_gui",
         window_config,
-        Box::new(move |_| Box::new(gcam::app::AppState::new().unwrap())),
+        Box::new(move |_| {
+            Box::new(gcam::ui::state::AppState::new().expect("Failed to create app state"))
+        }),
     );
 
     Ok(())

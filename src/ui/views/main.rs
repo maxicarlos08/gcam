@@ -1,5 +1,5 @@
 use super::camera;
-use crate::app::AppState;
+use crate::ui::state::AppState;
 use eframe::egui::{CentralPanel, Context, Direction, Layout};
 
 pub fn show(ctx: &Context, state: &mut AppState) {

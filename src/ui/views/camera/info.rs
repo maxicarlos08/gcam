@@ -1,5 +1,7 @@
-use crate::app::{AppState, UICamera};
-use camera_controller::settings::CameraSettings;
+use crate::{
+    cam_thread::settings::{CameraSettings, StaticWidget},
+    ui::state::{camera::UICamera, AppState},
+};
 use eframe::{
     egui::{Context, Grid, ScrollArea, SidePanel, Ui, Window},
     emath::Align2,
@@ -8,7 +10,6 @@ use eframe::{
 use gphoto2::{
     abilities::CameraDriverStatus,
     filesys::{AccessType, FilesystemType, StorageInfo, StorageType},
-    widget::WidgetValue,
 };
 
 pub fn show(ctx: &Context, state: &mut AppState) {
@@ -23,22 +24,15 @@ pub fn show(ctx: &Context, state: &mut AppState) {
                     driver_information(ui, &mut state.open_dialogs.camera_info_text, camera)
                 });
 
-                if let Some(status) = camera
+                if let Some(StaticWidget::Group { children, .. }) = camera
                     .settings
                     .as_ref()
-                    .map(|settings| {
-                        settings
-                            .children_id_names
-                            .get("status")
-                            .map(|status_id| settings.children.get(status_id))
-                            .flatten()
-                    })
-                    .flatten()
+                    .and_then(|settings| settings.get_child("status").map(|w| &w.widget))
                 {
                     ui.collapsing("Camera Status", |ui| {
                         camera_status(
                             ui,
-                            status.children.iter().filter_map(|(_, child)| {
+                            children.iter().filter_map(|(_, child)| {
                                 if state
                                     .settings
                                     .dev_settings
@@ -69,23 +63,23 @@ fn camera_status<'a>(ui: &mut Ui, children: impl Iterator<Item = &'a CameraSetti
     ScrollArea::horizontal().show(ui, |ui| {
         Grid::new("camera_status_grid").striped(true).show(ui, |ui| {
             for child in children {
-                ui.label(child.label.as_ref().unwrap_or(&child.name));
+                ui.label(&child.label);
 
-                ui.label(if let Some(value) = &child.value {
-                    match value {
-                        WidgetValue::Date(date) => date.to_string(),
-                        WidgetValue::Menu(choice) => choice.to_owned(),
-                        WidgetValue::Range(range) => range.to_string(),
-                        WidgetValue::Text(text) => text.to_owned(),
-                        WidgetValue::Toggle(toggled) => match *toggled {
-                            Some(true) => "Yes",
-                            Some(false) => "Noe",
-                            None => "Unknown",
-                        }
-                        .to_owned(),
+                ui.label(match &child.widget {
+                    StaticWidget::Date { timestamp } => timestamp.to_string(),
+                    StaticWidget::Radio { choice, .. } => choice.to_owned(),
+                    StaticWidget::Range { value, .. } => value.to_string(),
+                    StaticWidget::Text(text) => text.to_owned(),
+                    StaticWidget::Toggle { undefined, value } => match (undefined, value) {
+                        (false, true) => "Yes",
+                        (false, false) => "Noe",
+                        (true, _) => "Unknown",
                     }
-                } else {
-                    "No value".to_owned()
+                    .to_owned(),
+                    StaticWidget::Button => {
+                        todo!()
+                    }
+                    StaticWidget::Group { .. } => unreachable!(),
                 });
 
                 ui.end_row();
@@ -144,13 +138,13 @@ fn storage_display(ui: &mut Ui, storage: &StorageInfo, index: usize) {
                     ui.end_row();
                 }
 
-                if let Some(capacity) = storage.capacity() {
+                if let Some(capacity) = storage.capacity_kb() {
                     ui.label("Capacity");
                     ui.label(format!("{} Kb", capacity));
                     ui.end_row();
                 }
 
-                if let Some(free) = storage.free() {
+                if let Some(free) = storage.free_kb() {
                     ui.label("Free");
                     ui.label(format!("{} Kb", free));
                     ui.end_row();

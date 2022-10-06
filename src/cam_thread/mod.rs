@@ -3,7 +3,10 @@ pub mod messages;
 pub mod settings;
 
 use crossbeam_channel::{unbounded, Receiver, SendError, Sender};
+use gcam_lib::error::AppResult;
 use std::thread::JoinHandle;
+
+use self::messages::ToCameraThreadClosure;
 
 pub struct CameraThread {
     handle: Option<JoinHandle<()>>,
@@ -28,7 +31,7 @@ impl CameraThread {
         self.sender.send(messages::MessageToThread::Break)?;
 
         if let Some(join_handle) = self.handle.take() {
-            join_handle.join().unwrap()
+            join_handle.join().unwrap();
         }
 
         Ok(())
@@ -43,5 +46,10 @@ impl CameraThread {
 
     pub fn receiver(&mut self) -> &mut Receiver<messages::MessageFromThread> {
         &mut self.receiver
+    }
+
+    pub fn send_fn(&self, _fn: ToCameraThreadClosure) -> AppResult<()> {
+        self.send(messages::MessageToThread::Closure(_fn))?;
+        Ok(())
     }
 }

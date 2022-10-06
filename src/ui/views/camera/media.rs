@@ -1,6 +1,6 @@
 use eframe::egui::{Context, TopBottomPanel};
 
-use crate::app::AppState;
+use crate::ui::state::AppState;
 
 pub fn show(ctx: &Context, _state: &mut AppState) {
     // TODO

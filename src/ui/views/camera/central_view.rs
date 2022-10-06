@@ -1,13 +1,13 @@
 use crate::{
-    app::{AppState, UICamera},
+    cam_thread::settings::StaticWidget,
     error::CatchAppResult,
+    ui::state::{camera::UICamera, AppState},
 };
 use eframe::{
     egui::{Button, CentralPanel, Context, Direction, Frame, Layout, TopBottomPanel},
     emath::Align,
 };
 use gcam_lib::{error::AppResult, utils::geom::fit_size_into};
-use gphoto2::widget::WidgetType;
 
 pub fn show(ctx: &Context, state: &mut AppState) {
     let camera = state.camera.as_mut().unwrap();
@@ -34,7 +34,7 @@ pub fn show(ctx: &Context, state: &mut AppState) {
             ui.with_layout(Layout::centered_and_justified(Direction::LeftToRight), |ui| {
                 Frame::dark_canvas(ui.style()).show(ui, |ui| {
                     TopBottomPanel::bottom("camera_preview_config")
-                        .show_inside(ui, |ui| camera_focus_ui(camera));
+                        .show_inside(ui, |_| camera_focus_ui(camera));
                     if let Some(preview) = &state.last_preview_capture {
                         ui.image(preview, fit_size_into(preview.size_vec2(), ui.available_size()));
                     } else {
@@ -51,32 +51,20 @@ pub fn show(ctx: &Context, state: &mut AppState) {
 }
 
 fn camera_focus_ui(camera: &mut UICamera) -> AppResult<()> {
+    // TODO: Different camera models will have a different action for this
     if let Some(manualfocusdrive_setting) = camera
         .settings
         .as_ref()
-        .map(|settings| {
-            settings
-                .children_id_names
-                .get("actions")
-                .map(|actions_id| settings.children.get(actions_id))
-                .flatten()
-        })
-        .flatten()
-        .map(|actions| {
-            actions
-                .children_id_names
-                .get("manualfocusdrive")
-                .map(|manual_focus_id| actions.children.get(manual_focus_id))
-                .flatten()
-        })
-        .flatten()
+        .and_then(|settings| settings.get_child("actions"))
+        .and_then(|settings| settings.get_child("manualfocusdrive"))
     {
-        if let WidgetType::Range { min, max, .. } = manualfocusdrive_setting.widget_type {
+        if let StaticWidget::Range { .. } = &manualfocusdrive_setting.widget {
             // TODO
         } else {
+            // TODO: Don't spam da logs
             log::error!(
                 "Invalid widget type for manualfocusdrive: {:?}, expected Range widget",
-                manualfocusdrive_setting.widget_type
+                manualfocusdrive_setting.widget
             );
         }
     }

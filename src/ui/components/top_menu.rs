@@ -1,4 +1,4 @@
-use crate::{app::AppState, error::CatchAppResult};
+use crate::{error::CatchAppResult, ui::state::AppState};
 use eframe::{
     egui::{self, global_dark_light_mode_switch, menu::bar, Context, RichText, TopBottomPanel},
     epaint::Color32,
@@ -33,8 +33,8 @@ pub fn show(ctx: &Context, frame: &mut eframe::Frame, state: &mut AppState) {
                             if ui
                                 .radio_value(
                                     &mut state.current_camera,
-                                    Some(camera.clone()), // FIXME: Get rid of this clone
-                                    &camera.0,
+                                    Some(camera.clone()),
+                                    &camera.model,
                                 )
                                 .changed()
                                 && state.current_camera != selected_camera
@@ -44,7 +44,7 @@ pub fn show(ctx: &Context, frame: &mut eframe::Frame, state: &mut AppState) {
                         }
 
                         if let Some(camera) = selected_camera {
-                            state.use_camera(camera.0, camera.1).catch(state);
+                            state.use_camera(camera).catch(state);
                         }
                     });
                 }
